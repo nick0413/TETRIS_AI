@@ -2,43 +2,60 @@ import pyglet
 import numpy as np
 import os
 import time
-import sys
 
+import random
+random.seed(0)
 def clear_terminal():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 # In pyglet, coordinates are defined as the caritisan coordinate system, with the origin in the bottom left corner. 
 # The y-axis points up, the x-axis points right.
+# https://www.researchgate.net/figure/Different-rotations-1-2-3-and-4-denote-0-90-180-and-270-degree-respectively-in_fig3_282476297
+	
 I_piece = np.array([[0,0],[1,0],[2,0],[3,0]])
-O_piece = np.array([[0,0],[1,0],[0,1],[1,1]])
 L_piece = np.array([[0,0],[0,1],[1,1],[2,1]])
-P_piece = np.array([[0,0],[1,0],[2,0],[2,1]])
-q_piece = np.array([[0,0]])
+S_piece = np.array([[0,0],[1,0],[1,1],[2,1]])
+Z_piece = np.array([[0,1],[1,1],[1,0],[2,0]])
+J_piece = np.array([[0,1],[1,1],[2,1],[2,0]])
+O_piece = np.array([[0,0],[1,0],[0,1],[1,1]])
+T_piece = np.array([[0,1],[1,1],[1,0],[2,1]])
 
 codes_pieces = {
 	1:I_piece,
-	2:O_piece,
-	3:L_piece,
-	4:q_piece,
-}
+	2:L_piece,
+	3:S_piece,
+	4:Z_piece,
+	5:J_piece,
+	6:O_piece,
+	7:T_piece,
 
-salmon = (253, 63, 89)
-orange = (255, 200, 46)
-yellow = (254, 251, 52)
-green_ = (83, 218, 63)
+}
 cyan   = (1, 237, 250)
+orange = (246, 153, 4)
+green = (83, 218, 63)
+salmon = (253, 63, 89)
+blue= (0, 119, 211)
+yellow = (254, 251, 52)
+purple = (120, 37, 111)
+
 
 color_pieces = {
 	1:cyan,
-	2:yellow,
-	3:green_,
+	2:orange,
+	3:green,
 	4:salmon,
+	5:blue,
+	6:yellow,
+	7:purple,
 }
 types_pieces = {
 	1:"I_piece",
-	2:"O_piece",
-	3:"L_piece",
-	4:"q_piece",
+	2:"L_piece",
+	3:"S_piece",
+	4:"Z_piece",
+	5:"J_piece",
+	6:"O_piece",
+	7:"T_piece",
 }
  
 
@@ -114,7 +131,10 @@ class Tetris_board:
 		self.x_offset = x_offset
 		self.y_offset = y_offset
 
-		self.intersection = False
+		self.remaining_pieces = [1,2,3,4,5,6,7]
+
+	def start_game(self,starting_height: int = 22):
+		self.add_piece(piece(self.Generate_next_piece(),(5,starting_height)))
 
 
 
@@ -129,13 +149,13 @@ class Tetris_board:
 		self.base_grid[piece.board_position()] = piece.type
 
 	def draw_pieces(self):
-		# clear_terminal()
 		for piece in self.pieces:
 			for coord in piece.shape:
 				x,y=self.grid_position_to_pixels(piece.x,piece.y)
 				square = pyglet.shapes.Rectangle(x+coord[0]*self.square_size, y+coord[1]*self.square_size, self.square_size, self.square_size, color=piece.color)
 				square.draw()
 
+		# clear_terminal()
 		# print(np.flipud((self.base_grid+self.grounded_grid).T))
 		# time.sleep(0.05)
 		# print("-------------------\n")
@@ -201,8 +221,7 @@ class Tetris_board:
 			if self.selected_piece < 0 or self.selected_piece > len(self.pieces):
 				print("Invalid piece index.")
 				raise
-		# print("=====================================")
-		# print(self.pieces[self.selected_piece].y)
+
 		if axis == "x" and self.check_within_bounds(self.pieces[self.selected_piece], axis, direction):
 			self.pieces[self.selected_piece].x += direction
 			self.base_grid=self.base_grid*0
@@ -212,19 +231,25 @@ class Tetris_board:
 			self.pieces[self.selected_piece].y += direction
 			self.base_grid=self.base_grid*0
 			self.base_grid[self.pieces[self.selected_piece].board_position()] = self.pieces[self.selected_piece].type
-		# print(self.pieces[self.selected_piece].y)
+
 	
-
-
 	def check_piece_grounded(self, starting_height: int ):
-		# generate random int
-		r_int=np.random.randint(1,len(codes_pieces)+1)
+
+		
 		if self.pieces[self.selected_piece].grounded:
 			self.grounded_grid[self.pieces[self.selected_piece].board_position()]=self.pieces[self.selected_piece].type
-			# clear_terminal()
-			# print(np.flipud((self.grounded_grid).T))
+			r_int=self.Generate_next_piece()
 			self.add_piece(piece(r_int,(5,starting_height)))
 			return True
+		
+	def Generate_next_piece(self)-> int:
+		piece = random.choice(self.remaining_pieces)
+		self.remaining_pieces.remove(piece)
+		if len(self.remaining_pieces) == 0:
+			self.remaining_pieces = [1,2,3,4,5,6,7]
+		print(self.remaining_pieces)
+		print(piece)
+		return piece
 
 
 

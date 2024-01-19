@@ -1,6 +1,6 @@
 import pyglet
 from pyglet.window import key
-import functions as fn
+import tetris_engine as tr
 window_size = (700, 1200)
 window = pyglet.window.Window(window_size[0], window_size[1], "Grid")
 
@@ -12,7 +12,7 @@ grid_with=grid_x*square_size
 grid_height=grid_y*square_size
 grid_position = (window_size[0]/2-grid_with/2,window_size[1]/2-grid_height/2)
 
-board=fn.Tetris_board(grid_x,grid_y,square_size,grid_position[0],grid_position[1])
+board=tr.Tetris_board(grid_x,grid_y,square_size,grid_position[0],grid_position[1])
 
 @window.event
 def on_draw():
@@ -23,18 +23,10 @@ starting_height = 22
 pieces=False
 def on_key_press(symbol, modifiers):
 	global pieces
-	if symbol == key._1:
-		board.add_piece(fn.piece(1,(5,starting_height)))
+	if symbol == key.RETURN:
+		board.start_game(starting_height)
 		pieces=True
-	if symbol == key._2:
-		board.add_piece(fn.piece(2,(5,starting_height)))
-		pieces=True
-	if symbol == key._3:
-		board.add_piece(fn.piece(3,(5,starting_height)))
-		pieces=True
-	if symbol == key._4:
-		board.add_piece(fn.piece(4,(5,starting_height)))
-		pieces=True
+
 
 
 dropping_piece=False
@@ -56,14 +48,7 @@ def update(dt):
 	if keys[key.DOWN]:
 		dropping_piece=True
 		board.update_piece_position("y",-1)
-	# try:
-	# 	if board.pieces[board.selected_piece].grounded:
-	# 		board.add_piece(fn.piece(1,(5,starting_height)))
 
-	# except TypeError:
-	# 		pass
-	# finally:
-	# 	pass
 
 	
 def drop_piece(dt):

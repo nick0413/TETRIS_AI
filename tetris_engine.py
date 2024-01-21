@@ -2,7 +2,7 @@ import pyglet
 import numpy as np
 import os
 import time
-
+from lists import *
 import random
 random.seed(0)
 def clear_terminal():
@@ -10,55 +10,6 @@ def clear_terminal():
 
 # In pyglet, coordinates are defined as the caritisan coordinate system, with the origin in the bottom left corner. 
 # The y-axis points up, the x-axis points right.
-# https://www.researchgate.net/figure/Different-rotations-1-2-3-and-4-denote-0-90-180-and-270-degree-respectively-in_fig3_282476297
-	
-I_piece = np.array([[0,0],[1,0],[2,0],[3,0]])
-L_piece = np.array([[0,0],[0,1],[1,1],[2,1]])
-S_piece = np.array([[0,0],[1,0],[1,1],[2,1]])
-Z_piece = np.array([[0,1],[1,1],[1,0],[2,0]])
-J_piece = np.array([[0,1],[1,1],[2,1],[2,0]])
-O_piece = np.array([[0,0],[1,0],[0,1],[1,1]])
-T_piece = np.array([[0,1],[1,1],[1,0],[2,1]])
-
-codes_pieces = {
-	1:I_piece,
-	2:L_piece,
-	3:S_piece,
-	4:Z_piece,
-	5:J_piece,
-	6:O_piece,
-	7:T_piece,
-
-}
-cyan   = (1, 237, 250)
-orange = (246, 153, 4)
-green = (83, 218, 63)
-salmon = (253, 63, 89)
-blue= (0, 119, 211)
-yellow = (254, 251, 52)
-purple = (120, 37, 111)
-
-
-color_pieces = {
-	1:cyan,
-	2:orange,
-	3:green,
-	4:salmon,
-	5:blue,
-	6:yellow,
-	7:purple,
-}
-types_pieces = {
-	1:"I_piece",
-	2:"L_piece",
-	3:"S_piece",
-	4:"Z_piece",
-	5:"J_piece",
-	6:"O_piece",
-	7:"T_piece",
-}
- 
-
 
 
 def define_grid(n,m, size=100,x_offset=0,y_offset=0):
@@ -79,21 +30,21 @@ def define_grid(n,m, size=100,x_offset=0,y_offset=0):
 	# line 4 left-vertical
 	# definded in clockwise order
 
-
-
 def draw_grid(grid):
 	for lines in grid:
 		for line in lines:
 			line.draw()
 
-
 class piece:
-	def __init__(self,type, starting_position) -> None:
+
+
+	def __init__(self,type, starting_position, board_size) -> None:
 		self.x = starting_position[0]
 		self.y = starting_position[1]
 		self.type = type
 		self.color = color_pieces[type]
-		self.shape = codes_pieces[type]
+		self.rotation = 0
+		self.shape = codes_pieces[type][self.rotation]
 
 
 		self.max_x=max(self.shape[:,0])
@@ -103,7 +54,17 @@ class piece:
 
 		self.grounded = False
 
-		# print(f"{types_pieces[self.type]} created at {self.x},{self.y}")
+
+		print(f"{types_pieces[self.type]} created at {self.x},{self.y}")
+
+	def x_up_bound(self):
+		return max(self.shape[:,0])+self.x
+	def x_down_bound(self):
+		return min(self.shape[:,0])+self.x
+	def y_up_bound(self):
+		return max(self.shape[:,1])+self.y
+	def y_down_bound(self):
+		return min(self.shape[:,1])+self.y
 
 	def __str__(self) -> str:
 		return str(types_pieces[self.type])
@@ -114,8 +75,34 @@ class piece:
 		squares[:,1]+=self.y
 
 		indices=tuple(squares.T)
-
 		return indices
+	
+
+	def rotate(self):
+		self.rotation = (self.rotation+ 90) % 360
+		self.shape = codes_pieces[self.type][self.rotation]
+		self.max_x=max(self.shape[:,0])
+		self.min_x=min(self.shape[:,0])
+		self.max_y=max(self.shape[:,1])
+		self.min_y=min(self.shape[:,1])
+
+		if (self.y_down_bound()<0 ):
+			self.y = -self.min_y
+			print('out of bounds in x')
+
+		if (self.y_up_bound()>self.board_size.shape[1]-1):
+			self.y = board.shape[1]-1-self.max_y
+			print('out of bounds in x')
+
+		if (self.x_down_bound()<0 ):
+			self.x = -self.min_x
+			print('out of bounds in y')
+
+		if (self.x_up_bound()>board.shape[0]-1):
+			self.x = board.shape[0]-1-self.max_x
+			print('out of bounds in y')
+
+		print(self.board_position())
 
 
 class Tetris_board:

@@ -4,6 +4,7 @@ import os
 import time
 from lists import *
 import random
+import sys
 random.seed(0)
 def clear_terminal():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -70,13 +71,22 @@ class piece:
 	def __str__(self) -> str:
 		return str(types_pieces[self.type])
 	
-	def board_position(self):
+	def board_position(self, original_shape=False):
 		squares=np.copy(self.shape)
 		squares[:,0]+=self.x
 		squares[:,1]+=self.y
 
 		indices=tuple(squares.T)
+		if original_shape:
+			return squares
+		
 		return indices
+	
+	def assing_shape(self, shape):
+		shape[:,0] -= self.x
+		shape[:,1] -= self.y
+		  
+
 	
 	def rotate(self):
 		self.rotation = (self.rotation+ 90) % 360
@@ -88,21 +98,17 @@ class piece:
 
 		if (self.y_down_bound()<0 ):
 			self.y = -self.min_y
-			print('out of bounds in x')
 
 		if (self.y_up_bound()>self.board_size[1]-1):
 			self.y = self.board_size[1]-1-self.max_y
-			print('out of bounds in x')
 
 		if (self.x_down_bound()<0 ):
 			self.x = -self.min_x
-			print('out of bounds in y')
 
 		if (self.x_up_bound()>self.board_size[0]-1):
 			self.x = self.board_size[0]-1-self.max_x
-			print('out of bounds in y')
 
-		# print(self.board_position())
+
 
 
 class Tetris_board:
@@ -125,8 +131,6 @@ class Tetris_board:
 		self.add_piece(
 			piece(self.Generate_next_piece(),(5,starting_height),self.base_grid.shape)
 			)
-
-
 
 	def draw(self)->None:
 		draw_grid(self.grid_drawing)
@@ -230,23 +234,48 @@ class Tetris_board:
 			self.add_piece(piece(r_int,(5,starting_height),self.base_grid.shape))
 			return True
 		self.check_lost()
+		self.check_line_cleared()
 		
 	def check_lost(self):
-		print("checking lost")
 		if np.any(self.grounded_grid[:,20:]!=0):
-			print('you lost')
-			time.sleep(0.4)
 			self.pieces=[]
 			self.base_grid = np.zeros(self.grid_dimensions,dtype=int)
 			self.grounded_grid = np.copy(self.base_grid)
 			self.future_grid = np.copy(self.base_grid)
 			self.start_game()
 
-
-		clear_terminal()
-		print(np.flipud((self.grounded_grid[:,20:]).T))
-
+	def check_line_cleared(self):
+		lines_with_no_zeros = np.where(np.all(self.grounded_grid[:,:20] != 0, axis=0))[0]
+		# line_cleared = False
 		
+		if lines_with_no_zeros.size != 0:
+			print(lines_with_no_zeros)
+			for piece in self.pieces:
+				print(piece.type, piece.board_position(True))
+				indices = piece.board_position(True)
+				piece_y = indices[:,1]
+				print(piece_y)
+				if np.any(np.isin(piece_y, lines_with_no_zeros)):
+					remaining_blocks = np.where(~np.isin(piece_y, lines_with_no_zeros))
+					piece.shape = piece.shape[remaining_blocks]
+					line_cleared = True
+
+					# chekc if the piece.shape is empty
+					if piece.shape.size == 0:
+						self.pieces.remove(piece)
+						print('piece removed')
+						break
+		self.grounded_grid [:,lines_with_no_zeros] = 0
+
+
+
+
+		# if (line_cleared):
+		# 	np.savetxt('array.csv' , np.flipud((self.grounded_grid).T), delimiter=',', fmt='%d')	
+		# 	sys.exit()
+
+
+	
 	def Generate_next_piece(self)-> int:
 		piece = random.choice(self.remaining_pieces)
 		self.remaining_pieces.remove(piece)
@@ -268,8 +297,6 @@ class Tetris_board:
 def pieces_to_string(pieces):
 	return '[' + ', '.join(str(piece) for piece in pieces) + ']'	
 		
-
-
 def add_arrays_no_intersection(z, q):
     if z.shape != q.shape:
         raise ValueError("Arrays must have the same shape")

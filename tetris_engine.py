@@ -43,8 +43,9 @@ class piece:
 		self.y = starting_position[1]
 		self.type = type
 		self.color = color_pieces[type]
-		self.rotation = 0
+		self.rotation = 90
 		self.shape = codes_pieces[type][self.rotation]
+		self.board_size = board_size
 
 
 		self.max_x=max(self.shape[:,0])
@@ -55,7 +56,7 @@ class piece:
 		self.grounded = False
 
 
-		print(f"{types_pieces[self.type]} created at {self.x},{self.y}")
+		# print(f"{types_pieces[self.type]} created at {self.x},{self.y}")
 
 	def x_up_bound(self):
 		return max(self.shape[:,0])+self.x
@@ -77,7 +78,6 @@ class piece:
 		indices=tuple(squares.T)
 		return indices
 	
-
 	def rotate(self):
 		self.rotation = (self.rotation+ 90) % 360
 		self.shape = codes_pieces[self.type][self.rotation]
@@ -90,26 +90,27 @@ class piece:
 			self.y = -self.min_y
 			print('out of bounds in x')
 
-		if (self.y_up_bound()>self.board_size.shape[1]-1):
-			self.y = board.shape[1]-1-self.max_y
+		if (self.y_up_bound()>self.board_size[1]-1):
+			self.y = self.board_size[1]-1-self.max_y
 			print('out of bounds in x')
 
 		if (self.x_down_bound()<0 ):
 			self.x = -self.min_x
 			print('out of bounds in y')
 
-		if (self.x_up_bound()>board.shape[0]-1):
-			self.x = board.shape[0]-1-self.max_x
+		if (self.x_up_bound()>self.board_size[0]-1):
+			self.x = self.board_size[0]-1-self.max_x
 			print('out of bounds in y')
 
-		print(self.board_position())
+		# print(self.board_position())
 
 
 class Tetris_board:
 	def __init__(self,n,m, size=100,x_offset=0,y_offset=0) -> None:
-		self.base_grid = np.zeros((10,30),dtype=int)
-		self.grounded_grid = np.zeros((10,30),dtype=int)
-		self.future_grid = np.zeros((10,30),dtype=int)
+		self.grid_dimensions = (10,25)
+		self.base_grid = np.zeros(self.grid_dimensions,dtype=int)
+		self.grounded_grid = np.copy(self.base_grid)
+		self.future_grid = np.copy(self.base_grid)
 		self.grid_drawing = define_grid(n,m, size,x_offset,y_offset)
 		self.pieces =[]
 		self.square_size = size
@@ -121,7 +122,9 @@ class Tetris_board:
 		self.remaining_pieces = [1,2,3,4,5,6,7]
 
 	def start_game(self,starting_height: int = 22):
-		self.add_piece(piece(self.Generate_next_piece(),(5,starting_height)))
+		self.add_piece(
+			piece(self.Generate_next_piece(),(5,starting_height),self.base_grid.shape)
+			)
 
 
 
@@ -166,7 +169,6 @@ class Tetris_board:
 			self.future_grid[piece.board_position()] = piece.type
 			result, flag = add_arrays_no_intersection(self.future_grid, self.grounded_grid)
 			if flag:
-				# print('intersection')
 				self.intersection = True
 				piece.x-=direction
 				return False
@@ -219,24 +221,44 @@ class Tetris_board:
 			self.base_grid=self.base_grid*0
 			self.base_grid[self.pieces[self.selected_piece].board_position()] = self.pieces[self.selected_piece].type
 
-	
 	def check_piece_grounded(self, starting_height: int ):
 
 		
 		if self.pieces[self.selected_piece].grounded:
 			self.grounded_grid[self.pieces[self.selected_piece].board_position()]=self.pieces[self.selected_piece].type
 			r_int=self.Generate_next_piece()
-			self.add_piece(piece(r_int,(5,starting_height)))
+			self.add_piece(piece(r_int,(5,starting_height),self.base_grid.shape))
 			return True
+		self.check_lost()
+		
+	def check_lost(self):
+		print("checking lost")
+		if np.any(self.grounded_grid[:,20:]!=0):
+			print('you lost')
+			time.sleep(0.4)
+			self.pieces=[]
+			self.base_grid = np.zeros(self.grid_dimensions,dtype=int)
+			self.grounded_grid = np.copy(self.base_grid)
+			self.future_grid = np.copy(self.base_grid)
+			self.start_game()
+
+
+		clear_terminal()
+		print(np.flipud((self.grounded_grid[:,20:]).T))
+
 		
 	def Generate_next_piece(self)-> int:
 		piece = random.choice(self.remaining_pieces)
 		self.remaining_pieces.remove(piece)
 		if len(self.remaining_pieces) == 0:
 			self.remaining_pieces = [1,2,3,4,5,6,7]
-		print(self.remaining_pieces)
-		print(piece)
+
+
 		return piece
+	
+	def rotate_piece(self):
+		self.pieces[self.selected_piece].rotate()
+
 
 
 

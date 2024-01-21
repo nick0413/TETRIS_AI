@@ -26,6 +26,8 @@ def on_key_press(symbol, modifiers):
 	if symbol == key.RETURN:
 		board.start_game(starting_height)
 		pieces=True
+	if symbol == key.R or symbol == key.SPACE:
+		board.rotate_piece()
 
 
 
@@ -48,6 +50,8 @@ def update(dt):
 	if keys[key.DOWN]:
 		dropping_piece=True
 		board.update_piece_position("y",-1)
+
+	
 
 
 	

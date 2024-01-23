@@ -16,8 +16,15 @@ board=tr.Tetris_board(grid_x,grid_y,square_size,grid_position[0],grid_position[1
 
 @window.event
 def on_draw():
-    window.clear()
-    board.draw()
+	window.clear()
+	board.draw()
+
+@window.event
+def on_close():
+	# Your function here
+	print("Window is closing")
+	board.save_line_deletions()
+	window.close()
 
 starting_height = 22
 pieces=False
@@ -50,6 +57,9 @@ def update(dt):
 	if keys[key.DOWN]:
 		dropping_piece=True
 		board.update_piece_position("y",-1)
+
+	# if board.destroy:
+	# 	window.close()
 
 	
 

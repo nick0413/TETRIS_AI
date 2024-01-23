@@ -130,8 +130,13 @@ class Tetris_board:
 		self.destroy: bool = False
 		self.destroy_frames: int = 0
 		self.frames: int = 0
+		self.lines_no_z: List[np.ndarray] = []
 
 		self.remaining_pieces = [1,2,3,4,5,6,7]
+
+	def save_line_deletions(self):
+		save_arrays_to_file(self.lines_no_z, 'lines_no_z.txt')
+
 
 	def start_game(self,starting_height: int = 22):
 
@@ -239,7 +244,6 @@ class Tetris_board:
 			print(len(self.pieces),self.selected_piece)
 			print("Error-line229")
 
-
 	def check_piece_grounded(self, starting_height: int ):
 
 		self.save_game_state(f"{self.frames}_before.csv")
@@ -262,21 +266,14 @@ class Tetris_board:
 			self.start_game()
 
 
-		# if self.destroy_frames>4:
-		# 	# clear_terminal()
-		# 	print(np.flipud((self.grounded_grid+self.base_grid).T))
-		# 	time.sleep(1)
-		# 	sys.exit()
-		# 	self.destroy2 = False
-		# 	self.destroy = False
 
-		# if self.destroy:
-		# 	self.destroy_frames+=1
 
 	def check_line_cleared(self):
 
-		lines_with_no_zeros = np.where(np.all(self.grounded_grid[:,:20] != 0, axis=0))[0]
+		lines_with_no_zeros = np.where(np.all(self.grounded_grid != 0, axis=0))[0]
+		# print('--',lines_with_no_zeros)
 		line_cleared = False
+		self.lines_no_z.append(lines_with_no_zeros)
 		
 		if lines_with_no_zeros.size != 0:
 			print("lines cleared",lines_with_no_zeros)
@@ -284,17 +281,19 @@ class Tetris_board:
 			line_cleared = True
 
 			self.grounded_grid[lines_with_no_zeros,:20] = 0
-
+			print('xxxx----------')
 			for piece in self.pieces:
 				
 				indices = piece.board_position(True)
 				piece_y = indices[:,1]
 
 				piece_y = piece.board_position(True)[:,1]
-				lines_with_no_zeros =np.array([0])
 
 				remaining_blocks = np.where(~np.isin(piece_y, lines_with_no_zeros))
+				print('---',remaining_blocks)
+				print(piece.board_position(True))
 				piece.shape = piece.shape[remaining_blocks]
+				print(piece.board_position(True))
 				piece_y = piece.board_position(True)[:,1]
 
 				heights = piece_y
@@ -305,49 +304,25 @@ class Tetris_board:
 					piece.empty = True
 					print('piece removed', piece.type)
 
-
-			# 	indices = piece.board_position(True)
-			# 	piece_y = indices[:,1]
-
-			# 	remaining_blocks=np.empty(0,dtype=int)
-			# 	print(piece.type,'-----------------------------------')
-			# 	print(piece_y)
-			# 	if np.any(np.isin(piece_y, lines_with_no_zeros)):
-			# 		remaining_blocks = np.where(~np.isin(piece_y, lines_with_no_zeros))
-
-			# 		piece.shape = piece.shape[remaining_blocks]
-			# 		line_cleared = True
-
-			# 		if piece.shape.size == 0:
-			# 			piece.empty = True
-			# 			print('piece removed', piece.type)
-
-			# 	indices = piece.board_position(True)
-			# 	piece_y = indices[:,1]
-			# 	if np.any(piece_y > np.max(lines_with_no_zeros)):
-			# 		print(piece.shape)
-			# 		print('piece moved down')
-			# 		print(piece_y)
-			# 		drop_blocks=np.where(piece_y > np.max(lines_with_no_zeros))
-			# 		piece.shape[:,1][drop_blocks] -= len(lines_with_no_zeros)
-			# 		print(piece.board_position(True))
-
 			for piece in self.pieces:
 				if piece.empty:
 					self.pieces.remove(piece)
 					pieces_removed+=1
+
 			self.selected_piece=len(self.pieces)-1
 
 			self.recalculate_ground()
 
 		if line_cleared:
-			print(np.flipud((self.grounded_grid[:,:6]).T))
-		if lines_with_no_zeros.size > 2:
+			print(np.flipud((self.grounded_grid[:,:10]).T))
+			self.recalculate_ground()
+		if lines_with_no_zeros.size != 0:
 			self.destroy = True
-
+		
+		
 			
-		clear_terminal()
-		print(np.flipud((self.grounded_grid+self.base_grid).T))
+		# clear_terminal()
+		# print(np.flipud((self.grounded_grid+self.base_grid).T))
 
 	def Generate_next_piece(self)-> int:
 		piece = random.choice(self.remaining_pieces)
@@ -365,7 +340,7 @@ class Tetris_board:
 		self.grounded_grid=self.base_grid*0
 		for piece in self.pieces:
 			if piece.grounded:
-				print(piece.board_position(True),piece.type)
+				# print(piece.board_position(True),piece.type)
 				self.grounded_grid[piece.board_position()]=piece.type
 
 		np.savetxt("last_ground.csv", np.flipud(self.grounded_grid.T), fmt='%d', delimiter=",")
@@ -390,3 +365,9 @@ def add_arrays_no_intersection(z, q):
     result = z + q_masked
 
     return result, flag	
+
+def save_arrays_to_file(arrays, filename):
+    with open(filename, 'w') as f:
+        for array in arrays:
+            np.savetxt(f, array, delimiter=",", newline=" ", fmt="%s")
+            f.write("\n")

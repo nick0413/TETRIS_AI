@@ -23,7 +23,7 @@ starting_height = 22
 pieces=False
 def on_key_press(symbol, modifiers):
 	global pieces
-	if symbol == key.RETURN:
+	if not pieces:
 		board.start_game(starting_height)
 		pieces=True
 	if symbol == key.R or symbol == key.SPACE:

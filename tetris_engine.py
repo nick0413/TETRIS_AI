@@ -127,14 +127,15 @@ class Tetris_board:
 		self.x_offset = x_offset
 		self.y_offset = y_offset
 
-		
+		self.destroy: bool = False
+		self.destroy_frames: int = 0
+		self.frames: int = 0
 
 		self.remaining_pieces = [1,2,3,4,5,6,7]
 
 	def start_game(self,starting_height: int = 22):
-		self.add_piece(
-			Piece(self.Generate_next_piece(),(5,starting_height),self.base_grid.shape)
-			)
+
+		self.add_piece(Piece(self.Generate_next_piece(),(5,starting_height),self.base_grid.shape))
 
 	def draw(self)->None:
 		draw_grid(self.grid_drawing)
@@ -162,6 +163,11 @@ class Tetris_board:
 		x_px = x*self.square_size+self.x_offset
 		y_px = y*self.square_size+self.y_offset
 
+		if(y<0 or x<0):
+			print("Error-line 167")
+			print(x,y)
+			print(self.base_grid.shape)
+			sys.exit()
 
 		return (x_px,y_px)
 	
@@ -236,6 +242,7 @@ class Tetris_board:
 
 	def check_piece_grounded(self, starting_height: int ):
 
+		self.save_game_state(f"{self.frames}_before.csv")
 		if self.pieces[self.selected_piece].grounded:
 			self.grounded_grid[self.pieces[self.selected_piece].board_position()]=self.pieces[self.selected_piece].type
 			r_int=self.Generate_next_piece()
@@ -243,6 +250,8 @@ class Tetris_board:
 			return True
 		self.check_lost()
 		self.check_line_cleared()
+		self.save_game_state(f"{self.frames}_later.csv")
+		self.frames+=1
 		
 	def check_lost(self):
 		if np.any(self.grounded_grid[:,20:]!=0):
@@ -252,10 +261,20 @@ class Tetris_board:
 			self.future_grid = np.copy(self.base_grid)
 			self.start_game()
 
+
+		# if self.destroy_frames>4:
+		# 	# clear_terminal()
+		# 	print(np.flipud((self.grounded_grid+self.base_grid).T))
+		# 	time.sleep(1)
+		# 	sys.exit()
+		# 	self.destroy2 = False
+		# 	self.destroy = False
+
+		# if self.destroy:
+		# 	self.destroy_frames+=1
+
 	def check_line_cleared(self):
-		# for piece in self.pieces:
-		# 	print(piece)
-		# time.sleep(0.1)
+
 		lines_with_no_zeros = np.where(np.all(self.grounded_grid[:,:20] != 0, axis=0))[0]
 		line_cleared = False
 		
@@ -263,33 +282,55 @@ class Tetris_board:
 			print("lines cleared",lines_with_no_zeros)
 			pieces_removed=0
 			line_cleared = True
+
+			self.grounded_grid[lines_with_no_zeros,:20] = 0
+
 			for piece in self.pieces:
-
+				
 				indices = piece.board_position(True)
 				piece_y = indices[:,1]
 
-				remaining_blocks=np.empty(0,dtype=int)
-				print(piece.type,'-----------------------------------')
-				print(piece_y)
-				if np.any(np.isin(piece_y, lines_with_no_zeros)):
-					remaining_blocks = np.where(~np.isin(piece_y, lines_with_no_zeros))
+				piece_y = piece.board_position(True)[:,1]
+				lines_with_no_zeros =np.array([0])
 
-					piece.shape = piece.shape[remaining_blocks]
-					line_cleared = True
+				remaining_blocks = np.where(~np.isin(piece_y, lines_with_no_zeros))
+				piece.shape = piece.shape[remaining_blocks]
+				piece_y = piece.board_position(True)[:,1]
 
-					if piece.shape.size == 0:
-						piece.empty = True
-						print('piece removed', piece.type)
+				heights = piece_y
+				shifts = np.sum(heights[:, None] > lines_with_no_zeros, axis=1)
+				piece.shape[:,1] -= shifts
 
-				indices = piece.board_position(True)
-				piece_y = indices[:,1]
-				if np.any(piece_y > np.max(lines_with_no_zeros)):
-					print(piece.shape)
-					print('piece moved down')
-					print(piece_y)
-					drop_blocks=np.where(piece_y > np.max(lines_with_no_zeros))
-					piece.shape[:,1][drop_blocks] -= len(lines_with_no_zeros)
-					print(piece.board_position(True))
+				if piece.shape.size == 0:
+					piece.empty = True
+					print('piece removed', piece.type)
+
+
+			# 	indices = piece.board_position(True)
+			# 	piece_y = indices[:,1]
+
+			# 	remaining_blocks=np.empty(0,dtype=int)
+			# 	print(piece.type,'-----------------------------------')
+			# 	print(piece_y)
+			# 	if np.any(np.isin(piece_y, lines_with_no_zeros)):
+			# 		remaining_blocks = np.where(~np.isin(piece_y, lines_with_no_zeros))
+
+			# 		piece.shape = piece.shape[remaining_blocks]
+			# 		line_cleared = True
+
+			# 		if piece.shape.size == 0:
+			# 			piece.empty = True
+			# 			print('piece removed', piece.type)
+
+			# 	indices = piece.board_position(True)
+			# 	piece_y = indices[:,1]
+			# 	if np.any(piece_y > np.max(lines_with_no_zeros)):
+			# 		print(piece.shape)
+			# 		print('piece moved down')
+			# 		print(piece_y)
+			# 		drop_blocks=np.where(piece_y > np.max(lines_with_no_zeros))
+			# 		piece.shape[:,1][drop_blocks] -= len(lines_with_no_zeros)
+			# 		print(piece.board_position(True))
 
 			for piece in self.pieces:
 				if piece.empty:
@@ -299,20 +340,15 @@ class Tetris_board:
 
 			self.recalculate_ground()
 
-		# if line_cleared:
-		# 	print(np.flipud((self.grounded_grid[:,:6]).T))
+		if line_cleared:
+			print(np.flipud((self.grounded_grid[:,:6]).T))
+		if lines_with_no_zeros.size > 2:
+			self.destroy = True
+
 			
-		# 	sys.exit()
 		clear_terminal()
 		print(np.flipud((self.grounded_grid+self.base_grid).T))
 
-
-
-
-
-
-
-	
 	def Generate_next_piece(self)-> int:
 		piece = random.choice(self.remaining_pieces)
 		self.remaining_pieces.remove(piece)
@@ -332,9 +368,10 @@ class Tetris_board:
 				print(piece.board_position(True),piece.type)
 				self.grounded_grid[piece.board_position()]=piece.type
 
-		np.savetxt("last_ground.csv", np.flipud(self.grounded_grid).T, fmt='%d', delimiter=",")
+		np.savetxt("last_ground.csv", np.flipud(self.grounded_grid.T), fmt='%d', delimiter=",")
 
-
+	def save_game_state(self, file_name: str = "last_game_state.csv"):
+		np.savetxt("game_states/"+file_name, np.flipud(self.grounded_grid.T+self.base_grid.T), fmt='%d', delimiter=",")
 
 
 

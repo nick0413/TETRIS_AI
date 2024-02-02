@@ -6,9 +6,9 @@ from lists import *
 import random
 import sys
 from typing import List
-random.seed(0)
+random.seed(1)
 def clear_terminal():
-    os.system('cls' if os.name == 'nt' else 'clear')
+	os.system('cls' if os.name == 'nt' else 'clear')
 
 # In pyglet, coordinates are defined as the caritisan coordinate system, with the origin in the bottom left corner. 
 # The y-axis points up, the x-axis points right.
@@ -132,11 +132,17 @@ class Tetris_board:
 		self.frames: int = 0
 		self.lines_no_z: List[np.ndarray] = []
 
-		self.remaining_pieces = [1,2,3,4,5,6,7]
+		self.last_piece = None
+		self.piece_history: List[int] = []
+
+		self.score: int = 0
 
 	def save_line_deletions(self):
 		save_arrays_to_file(self.lines_no_z, 'lines_no_z.txt')
 
+	def save_piece_history(self):
+		print(self.piece_history)
+		np.savetxt("piece_history.csv", np.array(self.piece_history), fmt='%d', delimiter=",")
 
 	def start_game(self,starting_height: int = 22):
 
@@ -159,17 +165,12 @@ class Tetris_board:
 				square = pyglet.shapes.Rectangle(x+coord[0]*self.square_size, y+coord[1]*self.square_size, self.square_size, self.square_size, color=piece.color)
 				square.draw()
 
-		# clear_terminal()
-		# print(np.flipud((self.base_grid+self.grounded_grid).T))
-		# time.sleep(0.05)
-		# print("-------------------\n")
-
 	def grid_position_to_pixels(self,x,y):
 		x_px = x*self.square_size+self.x_offset
 		y_px = y*self.square_size+self.y_offset
 
 		if(y<0 or x<0):
-			print("Error-line 167")
+			print("Error-line 170")
 			print(x,y)
 			print(self.base_grid.shape)
 			sys.exit()
@@ -246,7 +247,7 @@ class Tetris_board:
 
 	def check_piece_grounded(self, starting_height: int ):
 
-		self.save_game_state(f"{self.frames}_before.csv")
+		# self.save_game_state(f"{self.frames}_before.csv")
 		if self.pieces[self.selected_piece].grounded:
 			self.grounded_grid[self.pieces[self.selected_piece].board_position()]=self.pieces[self.selected_piece].type
 			r_int=self.Generate_next_piece()
@@ -254,7 +255,8 @@ class Tetris_board:
 			return True
 		self.check_lost()
 		self.check_line_cleared()
-		self.save_game_state(f"{self.frames}_later.csv")
+		self.print_game_state()
+		# self.save_game_state(f"{self.frames}_later.csv")
 		self.frames+=1
 		
 	def check_lost(self):
@@ -263,37 +265,31 @@ class Tetris_board:
 			self.base_grid = np.zeros(self.grid_dimensions,dtype=int)
 			self.grounded_grid = np.copy(self.base_grid)
 			self.future_grid = np.copy(self.base_grid)
+			self.score = 0
 			self.start_game()
-
-
-
 
 	def check_line_cleared(self):
 
 		lines_with_no_zeros = np.where(np.all(self.grounded_grid != 0, axis=0))[0]
-		# print('--',lines_with_no_zeros)
 		line_cleared = False
 		self.lines_no_z.append(lines_with_no_zeros)
 		
 		if lines_with_no_zeros.size != 0:
+			self.score += scores_dic[len(lines_with_no_zeros)]  
 			print("lines cleared",lines_with_no_zeros)
 			pieces_removed=0
 			line_cleared = True
 
 			self.grounded_grid[lines_with_no_zeros,:20] = 0
-			print('xxxx----------')
+
 			for piece in self.pieces:
 				
 				indices = piece.board_position(True)
 				piece_y = indices[:,1]
 
 				piece_y = piece.board_position(True)[:,1]
-
 				remaining_blocks = np.where(~np.isin(piece_y, lines_with_no_zeros))
-				print('---',remaining_blocks)
-				print(piece.board_position(True))
 				piece.shape = piece.shape[remaining_blocks]
-				print(piece.board_position(True))
 				piece_y = piece.board_position(True)[:,1]
 
 				heights = piece_y
@@ -319,24 +315,21 @@ class Tetris_board:
 		if lines_with_no_zeros.size != 0:
 			self.destroy = True
 		
-		
-			
-		# clear_terminal()
-		# print(np.flipud((self.grounded_grid+self.base_grid).T))
-
 	def Generate_next_piece(self)-> int:
-		piece = random.choice(self.remaining_pieces)
-		self.remaining_pieces.remove(piece)
-		if len(self.remaining_pieces) == 0:
-			self.remaining_pieces = [1,2,3,4,5,6,7]
 
-
+		piece = random.choice([1,2,3,4,5,6,7])
+		print(piece, self.last_piece)
+		if piece == self.last_piece:	
+			piece = random.choice([1,2,3,4,5,6,7])
+	
+		self.last_piece = piece
+		self.piece_history.append(piece)
 		return piece
 	
-	def rotate_piece(self):
+	def rotate_piece(self) -> None:
 		self.pieces[self.selected_piece].rotate()
 
-	def recalculate_ground(self):
+	def recalculate_ground(self) -> None:
 		self.grounded_grid=self.base_grid*0
 		for piece in self.pieces:
 			if piece.grounded:
@@ -345,14 +338,17 @@ class Tetris_board:
 
 		np.savetxt("last_ground.csv", np.flipud(self.grounded_grid.T), fmt='%d', delimiter=",")
 
-	def save_game_state(self, file_name: str = "last_game_state.csv"):
+	def save_game_state(self, file_name: str = "last_game_state.csv") -> None:
 		np.savetxt("game_states/"+file_name, np.flipud(self.grounded_grid.T+self.base_grid.T), fmt='%d', delimiter=",")
 
+	def print_game_state(self) -> None:
+		clear_terminal()
+		piece= self.pieces[self.selected_piece]
+		print(piece.type, piece.x, piece.y, piece.rotation, piece.grounded)
+		print(np.flipud((self.grounded_grid[:,:]+self.base_grid[:,:]).T))
+		print('\n')
 
-
-
-
-def pieces_to_string(pieces):
+def pieces_to_string(pieces) -> str:
 	return '[' + ', '.join(str(piece) for piece in pieces) + ']'	
 		
 def add_arrays_no_intersection(z, q):
@@ -366,7 +362,7 @@ def add_arrays_no_intersection(z, q):
 
     return result, flag	
 
-def save_arrays_to_file(arrays, filename):
+def save_arrays_to_file(arrays, filename) -> None:
     with open(filename, 'w') as f:
         for array in arrays:
             np.savetxt(f, array, delimiter=",", newline=" ", fmt="%s")

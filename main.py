@@ -1,8 +1,15 @@
 import pyglet
 from pyglet.window import key
 import tetris_engine as tr
-window_size = (700, 1200)
+window_size = (1200, 1200)
 window = pyglet.window.Window(window_size[0], window_size[1], "Grid")
+
+score_label= pyglet.text.Label('0',
+							   font_name='Tetris',
+							   font_size=50,
+							   x=13*window.width/16, y=4*window.height/5,
+							   anchor_x='center', anchor_y='center',
+							   color=(255, 255, 255, 255))
 
 grid_x = 10
 grid_y = 20
@@ -18,16 +25,17 @@ board=tr.Tetris_board(grid_x,grid_y,square_size,grid_position[0],grid_position[1
 def on_draw():
 	window.clear()
 	board.draw()
+	score_label.draw()
 
 @window.event
 def on_close():
-	# Your function here
 	print("Window is closing")
-	board.save_line_deletions()
+	board.save_piece_history()
 	window.close()
 
 starting_height = 22
 pieces=False
+
 def on_key_press(symbol, modifiers):
 	global pieces
 	if not pieces:
@@ -57,6 +65,8 @@ def update(dt):
 	if keys[key.DOWN]:
 		dropping_piece=True
 		board.update_piece_position("y",-1)
+
+	score_label.text = str(board.score)
 
 	# if board.destroy:
 	# 	window.close()
